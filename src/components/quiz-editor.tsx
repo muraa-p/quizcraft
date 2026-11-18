@@ -358,7 +358,7 @@ export function QuizEditor({ quiz: initialQuiz, initialQuestions, storage = 'sup
       )}
 
       <div className="fixed bottom-4 right-4 sm:right-6 z-30 flex flex-wrap gap-2 items-center panel rounded-lg p-2 shadow-lg border border-[var(--line)]">
-        <span className="text-xs muted px-2 hidden sm:inline">{storage === 'local' ? 'Local quiz' : (quiz.status === 'published' ? 'Published' : 'Draft')}</span>
+        <span className={"text-xs font-medium px-2 hidden sm:inline " + (quiz.status === 'published' ? 'text-[var(--ok)]' : 'text-[var(--ink-soft)]')}>{storage === 'local' ? 'Local quiz' : (quiz.status === 'published' ? 'Published & live' : 'Draft (not public)')}</span>
         {storage === 'local' ? (
           <button className="btn btn-primary !py-2" onClick={() => save('draft')} disabled={saving} type="button"><Save size={15}/> {saving ? 'Saving…' : 'Save'}</button>
         ) : (
