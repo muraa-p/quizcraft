@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f3ede2;
+  --paper-deep: #e8dfcf;
+  --ink: #18212b;
+  --ink-soft: #425161;
+  --accent: #0f766e;
+  --accent-strong: #0b5f59;
+  --signal: #c2412c;
+  --line: #cfc3ad;
+  --card: #fbf8f1;
+  --ok: #166534;
+  --ok-bg: #e7f3ea;
+  --bad: #991b1b;
+  --bad-bg: #f8e8e5;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 400px at 10% -10%, rgba(15,118,110,0.08), transparent 60%),
+    radial-gradient(900px 300px at 100% 0%, rgba(194,65,44,0.07), transparent 55%),
+    var(--paper);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.22);
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: var(--font-display), Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+  a { color: inherit; }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(24,33,43,0.04);
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    --tw-ring-color: var(--accent);
+    --tw-ring-offset-color: var(--paper);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent-strong); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  .btn-secondary:hover { background: rgba(24,33,43,0.06); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+  }
+  .btn-ghost:hover { background: rgba(24,33,43,0.06); color: var(--ink); }
+  .btn-danger {
+    background: var(--signal);
+    color: #fff;
+  }
+  .field {
+    @apply w-full rounded-md border px-3 py-2.5 text-sm outline-none transition;
+    border-color: var(--line);
+    background: #fffdf9;
+    color: var(--ink);
+  }
+  .field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(15,118,110,0.15);
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-semibold;
+    color: var(--ink);
+  }
+  .muted { color: var(--ink-soft); }
+  .rule {
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+  .kicker {
+    @apply text-xs font-semibold tracking-[0.18em] uppercase;
+    color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
