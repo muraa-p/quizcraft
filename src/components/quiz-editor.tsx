@@ -133,6 +133,7 @@ export function QuizEditor({ quiz: initialQuiz, initialQuestions, storage = 'sup
     setSaving(true); setMsg(null);
     try {
       const normalized = normalizeAllForSave();
+      const wasPublished = quiz.status === 'published';
       const nextStatus = status || quiz.status;
       const nextQuiz = ensureQuizDefaults({ ...quiz, title: quiz.title.trim(), description: (quiz.description || '').trim(), slug: quiz.slug.trim().toLowerCase(), status: nextStatus, updated_at: new Date().toISOString() });
 
@@ -140,7 +141,10 @@ export function QuizEditor({ quiz: initialQuiz, initialQuestions, storage = 'sup
         onLocalSave?.(nextQuiz, normalized);
         setQuiz(nextQuiz);
         setQuestions(normalized.map((q, i) => normalizeQuestionForEditor(q, i)));
-        setMsg({ type: 'ok', text: status === 'published' ? 'Saved locally (draft/published flag stored in browser).' : 'Saved locally in this browser.' });
+        const localMsg = nextStatus === 'published'
+          ? 'Saved locally (marked as published in this browser). Note: local demos are not publicly shareable.'
+          : (wasPublished ? 'Saved locally and marked as draft in this browser.' : 'Saved locally in this browser.');
+        setMsg({ type: 'ok', text: localMsg });
         return;
       }
       if (!supabase) throw new Error('Supabase is not configured.');
@@ -197,7 +201,10 @@ export function QuizEditor({ quiz: initialQuiz, initialQuestions, storage = 'sup
       });
       setQuestions(remapped);
       setQuiz(nextQuiz);
-      setMsg({ type: 'ok', text: status === 'published' ? 'Quiz saved and published.' : 'Quiz saved.' });
+      const okText = nextStatus === 'published'
+        ? (wasPublished ? 'Quiz updated. Your live public link is up to date.' : 'Quiz published. It is now live at its public link.')
+        : (wasPublished ? 'Quiz unpublished and saved as draft. The public link will no longer be accessible.' : 'Quiz saved as draft.');
+      setMsg({ type: 'ok', text: okText });
       router.refresh();
     } catch (e: unknown) {
       setMsg({ type: 'err', text: e instanceof Error ? e.message : 'Could not save quiz.' });
@@ -369,7 +376,7 @@ export function QuizEditor({ quiz: initialQuiz, initialQuestions, storage = 'sup
         <ResultsTab settings={settings} onSettings={updateSettings} />
       )}
       {tab === 'share' && (
-        <ShareTab storage={storage} quiz={quiz} publicUrl={publicUrl} embedCode={embedCode} onCopied={(t,m)=>setMsg({type:t,text:m})} />
+        <ShareTab storage={storage} quiz={quiz} publicUrl={publicUrl} embedCode={embedCode} saving={saving} onPublish={() => save('published')} onCopied={(t,m)=>setMsg({type:t,text:m})} />
       )}
     </div>
   );
@@ -673,8 +680,9 @@ function ResultsTab({ settings, onSettings }: { settings: QuizSettings; onSettin
   );
 }
 
-function ShareTab({ storage, quiz, publicUrl, embedCode, onCopied }: { storage: 'supabase' | 'local'; quiz: Quiz; publicUrl: string; embedCode: string; onCopied: (t:'ok'|'err', m:string)=>void }) {
+function ShareTab({ storage, quiz, publicUrl, embedCode, saving, onPublish, onCopied }: { storage: 'supabase' | 'local'; quiz: Quiz; publicUrl: string; embedCode: string; saving: boolean; onPublish: () => void; onCopied: (t:'ok'|'err', m:string)=>void }) {
   async function copy(text: string, ok: string) { try { await navigator.clipboard.writeText(text); onCopied('ok', ok); } catch { onCopied('err', 'Could not copy to clipboard.'); } }
+  const isLocalHost = publicUrl.includes('localhost') || publicUrl.includes('127.0.0.1');
   return (
     <div className="grid lg:grid-cols-2 gap-6 items-start">
       <section className="panel rounded-lg p-5 sm:p-6 space-y-4">
@@ -685,20 +693,30 @@ function ShareTab({ storage, quiz, publicUrl, embedCode, onCopied }: { storage: 
             <div className="rounded-md border border-[var(--line)] p-3 bg-white/50"><p className="font-semibold mb-1">Local slug</p><code className="text-xs break-all">{quiz.slug}</code></div>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm muted">Status: <strong className="text-[var(--ink)]">{quiz.status}</strong>. {quiz.status === 'published' ? 'Anyone with the link can take this quiz if they can reach your app URL.' : 'Publish to make it publicly accessible at /q/{quiz.slug}.'}</p>
-            <div>
-              <label className="label">Public URL</label>
-              <div className="flex gap-2"><input className="field font-mono text-xs" readOnly value={publicUrl} /><button type="button" className="btn btn-secondary !px-3" onClick={()=>copy(publicUrl,'Public link copied.')}><Copy size={14}/></button></div>
+          <div className="space-y-4">
+            <div className={`text-sm rounded-md border px-4 py-3 ${quiz.status === 'published' ? 'border-[rgba(15,118,110,0.25)] bg-[rgba(15,118,110,0.08)] text-[var(--ink)]' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+              <p className="font-semibold text-base">{quiz.status === 'published' ? 'Live — your quiz is published' : 'Draft — your quiz is not live yet'}</p>
+              <p className="mt-1">{quiz.status === 'published' ? 'Anyone with the public link can open and take this quiz from anywhere. Respondents see the same quiz experience as preview, and their submissions are saved (subject to your access/schedule settings).' : 'Click “Publish quiz” to make it live. Once published, anyone with the public link can take it from anywhere (same respondent experience as preview).'}</p>
+              {quiz.status !== 'published' && (
+                <button type="button" className="btn btn-primary mt-3" onClick={onPublish} disabled={saving}><Check size={15}/> {saving ? 'Publishing…' : 'Publish quiz'}</button>
+              )}
             </div>
-            {(publicUrl.includes('localhost') || publicUrl.includes('127.0.0.1')) && (
+            <div>
+              <label className="label">Public URL {quiz.status !== 'published' && <span className="muted font-normal">(available after publishing)</span>}</label>
+              <div className="flex gap-2"><input className="field font-mono text-xs" readOnly value={publicUrl} /><button type="button" className="btn btn-secondary !px-3" onClick={()=>copy(publicUrl,'Public link copied.')} title="Copy public link"><Copy size={14}/></button></div>
+            </div>
+            {isLocalHost && (
               <p className="text-sm rounded-md border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2">
-                This link points to your local machine, so classmates/others won&apos;t be able to open it. Deploy the app (or host it on a reachable URL), set <code>NEXT_PUBLIC_SITE_URL</code> to that URL, restart, and share the published <code>/q/{quiz.slug}</code> link.
+                This link points to your local machine, so classmates/others won&apos;t be able to open it. Deploy the app (or host it on a reachable URL), set <code>NEXT_PUBLIC_SITE_URL</code> to that URL, and share the published <code>/q/{quiz.slug}</code> link.
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              {quiz.status === 'published' && <a href={`/q/${quiz.slug}`} target="_blank" rel="noreferrer" className="btn btn-secondary"><ExternalLink size={15}/> Open public quiz</a>}
-              <a href={`/q/${quiz.slug}`} target="_blank" rel="noreferrer" className="btn btn-ghost"><Play size={15}/> Test as respondent</a>
+              {quiz.status === 'published' ? (
+                <a href={`/q/${quiz.slug}`} target="_blank" rel="noreferrer" className="btn btn-primary"><ExternalLink size={15}/> Open live quiz</a>
+              ) : (
+                <a href={`/q/${quiz.slug}`} target="_blank" rel="noreferrer" className="btn btn-secondary" aria-disabled="true" onClick={(e)=>e.preventDefault()} title="Publish the quiz first to make the public link live"><Play size={15}/> Public link (publish first)</a>
+              )}
+              <a href={`/q/${quiz.slug}`} target="_blank" rel="noreferrer" className="btn btn-ghost"><Play size={15}/> Open /q link</a>
             </div>
           </div>
         )}
